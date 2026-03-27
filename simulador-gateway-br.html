@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Gateway de Pagamento BR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --surface2: #F0EDE6;
+    --border: #DDD9D0;
+    --border2: #C8C4BA;
+    --text: #1A1916;
+    --text2: #6B6760;
+    --text3: #9E9B94;
+    --accent: #1A1916;
+    --green: #0D5C3A;
+    --green-bg: #E6F5EE;
+    --green-border: #A3D4BC;
+    --amber: #7A4500;
+    --amber-bg: #FEF3E2;
+    --amber-border: #F5C87A;
+    --red: #7A1A1A;
+    --red-bg: #FEF0F0;
+    --red-border: #F5A3A3;
+    --blue: #1A3A7A;
+    --blue-bg: #EEF3FE;
+    --r: 6px;
+    --r2: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 80px;
+  }
+
+  header {
+    background: var(--text);
+    color: #F7F5F0;
+    padding: 28px 40px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.4px;
+    line-height: 1.2;
+  }
+
+  header p {
+    font-size: 12px;
+    opacity: 0.55;
+    margin-top: 4px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .header-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 5px 12px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 0;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+    margin-bottom: 12px;
+  }
+
+  /* Cenários */
+  .scenarios {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+
+  .sc-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 12px 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .sc-btn:hover { border-color: var(--border2); background: var(--surface2); }
+
+  .sc-btn.on {
+    background: var(--text);
+    border-color: var(--text);
+  }
+
+  .sc-ico { font-size: 18px; margin-bottom: 7px; display: block; }
+  .sc-name { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.3; }
+  .sc-btn.on .sc-name { color: #F7F5F0; }
+  .sc-sub { font-size: 10px; color: var(--text3); margin-top: 3px; line-height: 1.4; }
+  .sc-btn.on .sc-sub { color: rgba(247,245,240,0.55); }
+
+  /* Painel de recomendações */
+  .rec-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 20px 22px;
+    margin-bottom: 28px;
+    display: none;
+  }
+
+  .rec-panel.active { display: block; }
+
+  .rec-panel-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 3px;
+    letter-spacing: -0.2px;
+  }
+
+  .rec-panel-sub {
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.5;
+  }
+
+  .alert {
+    padding: 10px 14px;
+    border-radius: var(--r);
+    font-size: 12px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    border-left: 3px solid;
+  }
+
+  .alert.info { background: var(--blue-bg); color: var(--blue); border-color: #378ADD; }
+  .alert.warn { background: var(--amber-bg); color: var(--amber); border-color: #EF9F27; }
+  .alert.danger { background: var(--red-bg); color: var(--red); border-color: #E24B4A; }
+  .alert strong { font-weight: 600; }
+
+  .rank-list { display: flex; flex-direction: column; gap: 7px; }
+
+  .rank-row {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 10px;
+    align-items: start;
+    padding: 11px 13px;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+  }
+
+  .rank-row.best { background: var(--green-bg); border-color: var(--green-border); }
+  .rank-row.good { background: var(--amber-bg); border-color: var(--amber-border); }
+  .rank-row.skip { background: var(--red-bg); border-color: var(--red-border); }
+  .rank-row.neutral { background: var(--surface2); }
+
+  .r-num { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; padding-top: 1px; }
+  .rank-row.best .r-num { color: var(--green); }
+  .rank-row.good .r-num { color: var(--amber); }
+  .rank-row.skip .r-num { color: var(--red); }
+  .rank-row.neutral .r-num { color: var(--text3); }
+
+  .r-name { font-size: 13px; font-weight: 600; }
+  .rank-row.best .r-name { color: var(--green); }
+  .rank-row.good .r-name { color: var(--amber); }
+  .rank-row.skip .r-name { color: var(--red); }
+
+  .r-why { font-size: 11.5px; color: var(--text2); margin-top: 3px; line-height: 1.55; }
+  .rank-row.best .r-why { color: #1A5C40; }
+  .rank-row.good .r-why { color: #7A4500; }
+  .rank-row.skip .r-why { color: #7A1A1A; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 9.5px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.06);
+    color: var(--text2);
+  }
+
+  /* Simulador */
+  .sim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 22px 24px;
+    margin-bottom: 28px;
+  }
+
+  .sim-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 28px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 540px) { .sim-grid { grid-template-columns: 1fr; } }
+
+  .slider-group { display: flex; flex-direction: column; gap: 6px; }
+
+  .slider-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .slider-label span:first-child { font-size: 12px; color: var(--text2); }
+
+  .slider-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    outline: none;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--text);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--text);
+  }
+
+  input[type=range]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--text);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+  }
+
+  .mix-hint {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    text-align: right;
+    margin-top: -10px;
+    margin-bottom: 16px;
+  }
+
+  .mix-hint.warn { color: var(--amber); }
+
+  /* Resultados */
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .results-meta {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .r-card {
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 10px 12px;
+    background: var(--surface2);
+    transition: all 0.2s;
+  }
+
+  .r-card.winner {
+    background: var(--text);
+    border-color: var(--text);
+  }
+
+  .r-card-name {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text2);
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .r-card.winner .r-card-name { color: rgba(247,245,240,0.6); }
+
+  .r-card-cost {
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+
+  .r-card.winner .r-card-cost { color: #F7F5F0; }
+
+  .r-card-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .r-card.winner .r-card-pct { color: rgba(247,245,240,0.5); }
+
+  .winner-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    background: rgba(247,245,240,0.15);
+    color: rgba(247,245,240,0.7);
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 4px;
+  }
+
+  .chart-wrap { position: relative; height: 220px; margin-top: 4px; }
+
+  .extra-warn {
+    font-size: 11.5px;
+    color: var(--amber);
+    background: var(--amber-bg);
+    border: 1px solid var(--amber-border);
+    border-radius: var(--r);
+    padding: 9px 13px;
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+
+  /* Tabela comparativa */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead { background: var(--surface2); }
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  .pill {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 9.5px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  .pill-g { background: var(--green-bg); color: var(--green); }
+  .pill-r { background: var(--red-bg); color: var(--red); }
+  .pill-y { background: var(--amber-bg); color: var(--amber); }
+  .pill-n { background: var(--surface2); color: var(--text3); }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 20px 40px;
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    margin-top: 40px;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 20px 20px 18px; }
+    .container { padding: 24px 16px 0; }
+    footer { padding: 20px 16px; }
+    .scenarios { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Simulador de Gateway de Pagamento BR</h1>
+    <p>Dados verificados em março/2026 — fontes oficiais de cada gateway</p>
+  </div>
+  <div class="header-badge">AbacatePay · Asaas · Efí Bank · InfinitePay · Iugu · Pagar.me · Stripe · +3</div>
+</header>
+
+<div class="container">
+
+  <!-- CENÁRIOS -->
+  <div class="section-label">Selecione seu cenário</div>
+  <div class="scenarios">
+    <button class="sc-btn on" onclick="showRec('saas-pix', this)">
+      <span class="sc-ico">&#9654;</span>
+      <span class="sc-name">Micro-SaaS / produto digital</span>
+      <span class="sc-sub">Pix dominante, MVP, bootstrap</span>
+    </button>
+    <button class="sc-btn" onclick="showRec('saas-card', this)">
+      <span class="sc-ico">&#9654;</span>
+      <span class="sc-name">SaaS com cartão recorrente</span>
+      <span class="sc-sub">Assinaturas, dunning, churn</span>
+    </button>
+    <button class="sc-btn" onclick="showRec('ecomm', this)">
+      <span class="sc-ico">&#9654;</span>
+      <span class="sc-name">E-commerce parcelado</span>
+      <span class="sc-sub">Ticket alto, 6–12x frequente</span>
+    </button>
+    <button class="sc-btn" onclick="showRec('marketplace', this)">
+      <span class="sc-ico">&#9654;</span>
+      <span class="sc-name">Marketplace / split</span>
+      <span class="sc-sub">Divisão entre recebedores</span>
+    </button>
+    <button class="sc-btn" onclick="showRec('inter', this)">
+      <span class="sc-ico">&#9654;</span>
+      <span class="sc-name">Clientes internacionais</span>
+      <span class="sc-sub">USD/EUR, cartão estrangeiro</span>
+    </button>
+    <button class="sc-btn" onclick="showRec('delivery', this)">
+      <span class="sc-ico">&#9654;</span>
+      <span class="sc-name">Delivery / serviço local</span>
+      <span class="sc-sub">Alto volume, D+0 importante</span>
+    </button>
+  </div>
+
+  <!-- PAINÉIS DE RECOMENDAÇÃO -->
+
+  <div id="p-saas-pix" class="rec-panel active">
+    <div class="rec-panel-title">Micro-SaaS / produto digital com Pix dominante</div>
+    <div class="rec-panel-sub">Perfil: bootstrap, MVP, ARR baixo, base BR, pagamentos via Pix (60%+) e poucos cartões. Fluxo de caixa crítico. Mensalidade é inimiga do MRR nascente.</div>
+    <div class="rank-list">
+      <div class="rank-row best"><div class="r-num">1</div><div><div class="r-name">AbacatePay</div><div class="r-why">Pix R$ 0,80 fixo — num ticket de R$ 100, são 0,8%. Cartão 3,5%+R$0,60 (D+32, ou 5% com antecipação D+2). Assinaturas às mesmas taxas. Open-source SDKs. Sem mensalidade.</div><div class="tags"><span class="tag">Pix fixo</span><span class="tag">Sem mensalidade</span><span class="tag">SDKs open-source</span></div></div></div>
+      <div class="rank-row best"><div class="r-num">2</div><div><div class="r-name">Asaas</div><div class="r-why">100 Pix grátis/mês — até 100 assinantes Pix, custo zero. Boleto R$ 1,99 (mais barato). Recorrência, NF-e, dunning, API tudo incluso. Funciona muito bem para SaaS.</div><div class="tags"><span class="tag">100 Pix grátis</span><span class="tag">NF-e</span><span class="tag">Dunning</span></div></div></div>
+      <div class="rank-row good"><div class="r-num">3</div><div><div class="r-name">Efí Bank</div><div class="r-why">Pix 1,19% via API. Estrutura robusta, RA1000, split grátis. Bom para quando o produto cresce. Atenção: Pix Automático (recorrência) custa R$ 3,50/transação.</div><div class="tags"><span class="tag">API madura</span><span class="tag">RA1000</span></div></div></div>
+      <div class="rank-row skip"><div class="r-num">&#10005;</div><div><div class="r-name">InfinitePay para SaaS</div><div class="r-why">Pix 0% parece atraente, mas não tem dunning, gestão de recorrência nem dashboard SaaS. Feito para comércio, não produto digital.</div></div></div>
+      <div class="rank-row skip"><div class="r-num">&#10005;</div><div><div class="r-name">Iugu no início</div><div class="r-why">Mensalidade R$ 49–149/mês mata a margem com menos de ~50 assinantes ativos. Não justifica antes do break-even.</div></div></div>
+    </div>
+  </div>
+
+  <div id="p-saas-card" class="rec-panel">
+    <div class="rec-panel-title">SaaS com cartão recorrente</div>
+    <div class="rec-panel-sub">Perfil: assinaturas mensais/anuais, mix cartão (60%) + Pix (40%), dunning essencial para combater churn involuntário.</div>
+    <div class="alert warn"><strong>O problema do D+32:</strong> 200 assinantes × R$ 99/mês no cartão = R$ 19.800 que só entra 32 dias depois. No crescimento, isso cria buraco de caixa estrutural. Antecipação D+2 resolve, mas custa +1,5% (AbacatePay) ou ~1,25%/mês (Asaas).</div>
+    <div class="rank-list">
+      <div class="rank-row best"><div class="r-num">1</div><div><div class="r-name">Iugu</div><div class="r-why">Especialista em assinaturas. Dashboard MRR/churn nativo. Crédito a partir de 2,49%+R$0,70. Dunning configurável. O custo mensal (R$ 49–149) compensa acima de ~30 assinantes.</div><div class="tags"><span class="tag">Dunning nativo</span><span class="tag">MRR dashboard</span><span class="tag">2,49%+R$0,70</span></div></div></div>
+      <div class="rank-row best"><div class="r-num">2</div><div><div class="r-name">Asaas</div><div class="r-why">Recorrência, dunning, régua de cobrança, NF-e — tudo incluso sem mensalidade. Cartão: R$ 0,49+2,99% à vista. Melhor para early-stage sem querer mensalidade fixa.</div><div class="tags"><span class="tag">Sem mensalidade</span><span class="tag">Régua cobrança</span><span class="tag">NF-e</span></div></div></div>
+      <div class="rank-row good"><div class="r-num">3</div><div><div class="r-name">AbacatePay + Iugu (combo)</div><div class="r-why">AbacatePay para Pix (R$ 0,80) + Iugu para cartão recorrente (2,49%). Duas integrações, mas menor custo total. Faz sentido a partir de ~R$ 10k MRR.</div><div class="tags"><span class="tag">Menor custo total</span><span class="tag">Mais complexidade</span></div></div></div>
+      <div class="rank-row good"><div class="r-num">4</div><div><div class="r-name">Stripe Billing</div><div class="r-why">Melhor produto de recorrência global (dunning, trials, proration). Taxa 3,99%+R$0,39 é cara, mas Adaptive Acceptance ML reduz churn involuntário. Vale para clientes internacionais.</div><div class="tags"><span class="tag">Dunning mais completo</span><span class="tag">Internacional</span></div></div></div>
+      <div class="rank-row skip"><div class="r-num">&#10005;</div><div><div class="r-name">Mercado Pago para recorrência</div><div class="r-why">Antifraude agressivo bloqueia até 20% das renovações automaticamente — churn involuntário mascarado. Documentado por fundadores de SaaS BR.</div></div></div>
+    </div>
+  </div>
+
+  <div id="p-ecomm" class="rec-panel">
+    <div class="rec-panel-title">E-commerce com parcelamento frequente</div>
+    <div class="rec-panel-sub">Perfil: ticket médio R$ 200–800, 60–70% das vendas parceladas em 6–12x, volume relevante.</div>
+    <div class="alert danger"><strong>InfinitePay não é para parcelamento pesado.</strong> Crédito parcelado começa em 8,99% nas 12x. Efí Bank cobra 4,39% nas mesmas 12x. A diferença de ~4,6 pontos percentuais é enorme no volume.</div>
+    <div class="rank-list">
+      <div class="rank-row best"><div class="r-num">1</div><div><div class="r-name">Efí Bank</div><div class="r-why">Melhor combo para parcelado: à vista 3,49%, 2–6x em 3,99%, 7–12x em 4,39%. Antifraude e checkout transparente grátis. Split disponível. Nota RA1000.</div><div class="tags"><span class="tag">3,49% à vista</span><span class="tag">4,39% em 12x</span><span class="tag">Antifraude grátis</span></div></div></div>
+      <div class="rank-row good"><div class="r-num">2</div><div><div class="r-name">InfinitePay (só vendas à vista + Pix)</div><div class="r-why">Se o mix for majoritariamente à vista (2,69%) + Pix (grátis), é imbatível. Mas fuja se parcelado dominar.</div><div class="tags"><span class="tag">2,69% à vista</span><span class="tag">Pix grátis</span></div></div></div>
+      <div class="rank-row good"><div class="r-num">3</div><div><div class="r-name">Stone (faturamento ≥ R$ 15k/mês)</div><div class="r-why">Adquirente própria + taxas negociáveis. 3,11% à vista, parcelamento até 18x. Volume alto + negociação direta bate qualquer gateway.</div><div class="tags"><span class="tag">Negociável</span><span class="tag">18x parcelado</span></div></div></div>
+      <div class="rank-row skip"><div class="r-num">&#10005;</div><div><div class="r-name">Pagar.me (plano parcelado)</div><div class="r-why">12x chega a 21,59%. Taxa fixa R$ 0,99/transação + R$ 3,67 de saque. Um dos mais caros para e-commerce parcelado.</div></div></div>
+    </div>
+  </div>
+
+  <div id="p-marketplace" class="rec-panel">
+    <div class="rec-panel-title">Marketplace / plataforma com split de pagamento</div>
+    <div class="rec-panel-sub">Você intermedia vendedores/prestadores e precisa dividir automaticamente o recebimento entre múltiplas contas no momento da transação.</div>
+    <div class="alert info"><strong>Split sem isso:</strong> você recebe tudo, repassa manualmente, cria problema fiscal e atrasa sellers. Em volume, inviabiliza a operação.</div>
+    <div class="rank-list">
+      <div class="rank-row best"><div class="r-num">1</div><div><div class="r-name">Pagar.me</div><div class="r-why">Split mais robusto do BR para marketplace. Multiadquirência, antifraude customizável, split por % ou valor fixo, recorrência. Caro em taxas (4,39–5,59%), mas o produto de split é o mais maduro.</div><div class="tags"><span class="tag">Split mais robusto</span><span class="tag">Multiadquirência</span></div></div></div>
+      <div class="rank-row best"><div class="r-num">2</div><div><div class="r-name">Efí Bank</div><div class="r-why">Split gratuito, Pix 1,19%, cartão 3,49% à vista. Ótimo custo-benefício para marketplace de menor complexidade. Pix Split (divisão em tempo real) via API.</div><div class="tags"><span class="tag">Split gratuito</span><span class="tag">Pix split</span></div></div></div>
+      <div class="rank-row good"><div class="r-num">3</div><div><div class="r-name">Stripe Connect</div><div class="r-why">Melhor para marketplace com sellers internacionais ou KYC automatizado. Mais caro (3,99%+R$0,39), mas Connect tem o fluxo mais completo de plataforma.</div><div class="tags"><span class="tag">KYC automatizado</span><span class="tag">Internacional</span></div></div></div>
+      <div class="rank-row skip"><div class="r-num">&#10005;</div><div><div class="r-name">AbacatePay</div><div class="r-why">Split ainda em desenvolvimento. Não usar para marketplace até lançamento confirmado.</div></div></div>
+    </div>
+  </div>
+
+  <div id="p-inter" class="rec-panel">
+    <div class="rec-panel-title">Produto com clientes internacionais</div>
+    <div class="rec-panel-sub">Receita em USD/EUR, cartões estrangeiros, billing em moeda estrangeira, usuários fora do BR.</div>
+    <div class="alert info"><strong>Aqui não tem debate:</strong> Nenhum gateway brasileiro processa cartão internacional com eficiência comparável ao Stripe. A questão é só quando combinar com um gateway BR para o mercado local.</div>
+    <div class="rank-list">
+      <div class="rank-row best"><div class="r-num">1</div><div><div class="r-name">Stripe</div><div class="r-why">Único viável para internacional. +100 moedas, +100 métodos, liquidação em USD. Adaptive Acceptance ML reduz recusas de cartões estrangeiros. Billing completo (proration, trials, metered).</div><div class="tags"><span class="tag">Único para USD/EUR</span><span class="tag">Billing global</span><span class="tag">+100 moedas</span></div></div></div>
+      <div class="rank-row good"><div class="r-num">2</div><div><div class="r-name">Stripe + AbacatePay ou Asaas (local)</div><div class="r-why">Estratégia híbrida: Stripe para internacionais, AbacatePay/Asaas para clientes BR. Otimiza custo sem abrir mão de cobertura global.</div><div class="tags"><span class="tag">Custo otimizado</span><span class="tag">Duas integrações</span></div></div></div>
+      <div class="rank-row skip"><div class="r-num">&#10005;</div><div><div class="r-name">Gateways 100% brasileiros</div><div class="r-why">Asaas, Efí, Pagar.me, InfinitePay — nenhum aceita cartão internacional com eficiência real. Recusas frequentes, sem multi-moeda, sem liquidação em USD.</div></div></div>
+    </div>
+  </div>
+
+  <div id="p-delivery" class="rec-panel">
+    <div class="rec-panel-title">App delivery / serviço local / PME física + online</div>
+    <div class="rec-panel-sub">Alto volume, mix Pix (60%)+cartão à vista (30%)+parcelado (10%), recebimento imediato prioridade.</div>
+    <div class="alert warn"><strong>Fluxo de caixa é prioridade:</strong> Você paga fornecedor e motoboy hoje. Cartão D+32 é inviável. Priorize D+0 (Pix) e D+1 (cartão com antecipação inclusa).</div>
+    <div class="rank-list">
+      <div class="rank-row best"><div class="r-num">1</div><div><div class="r-name">InfinitePay</div><div class="r-why">Pix 0% + crédito à vista 2,69% + recebimento na hora (D+0/D+1 incluso). Perfeito para delivery onde maioria paga Pix ou à vista. Evitar se parcelado for frequente.</div><div class="tags"><span class="tag">Pix grátis</span><span class="tag">D+0/D+1 incluso</span><span class="tag">2,69% à vista</span></div></div></div>
+      <div class="rank-row best"><div class="r-num">2</div><div><div class="r-name">Stone (faturamento ≥ R$ 15k/mês)</div><div class="r-why">Adquirente própria, Pix 0,75%, débito 1,25%, crédito 3,11%. Sem intermediário. Parcelamento até 18x. Para volume, Stone bate qualquer gateway em poder de negociação.</div><div class="tags"><span class="tag">Adquirente direta</span><span class="tag">Atendimento em 5s</span></div></div></div>
+      <div class="rank-row good"><div class="r-num">3</div><div><div class="r-name">Efí Bank</div><div class="r-why">Bom custo-benefício sem faturamento mínimo. Cartão 3,49% à vista, Pix 1,19%. API robusta para integrar com sistema de delivery.</div><div class="tags"><span class="tag">Sem faturamento mín.</span><span class="tag">API robusta</span></div></div></div>
+    </div>
+  </div>
+
+  <!-- SIMULADOR -->
+  <div class="section-label" style="margin-top:8px">Simulador de custo real mensal</div>
+  <div class="sim-card">
+    <div class="sim-grid">
+      <div class="slider-group">
+        <div class="slider-label"><span>Transações por mês</span><span class="slider-val" id="ntx-out">100</span></div>
+        <input type="range" id="ntx" min="10" max="1000" step="10" value="100">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label"><span>Ticket médio</span><span class="slider-val" id="tick-out">R$ 100</span></div>
+        <input type="range" id="tick" min="20" max="800" step="10" value="100">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label"><span>% via Pix</span><span class="slider-val" id="ppix-out">60%</span></div>
+        <input type="range" id="ppix" min="0" max="100" step="5" value="60">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label"><span>% cartão à vista</span><span class="slider-val" id="pcred-out">30%</span></div>
+        <input type="range" id="pcred" min="0" max="100" step="5" value="30">
+      </div>
+    </div>
+    <div class="mix-hint" id="mix-hint">Restante (10%) = parcelado (estimado 6x)</div>
+
+    <div class="results-header">
+      <div class="section-label" style="margin:0">Custo de gateway estimado</div>
+      <div class="results-meta" id="results-meta">Receita: R$ 10.000 | 100 transações</div>
+    </div>
+
+    <div class="results-grid" id="results-grid"></div>
+    <div style="position:relative;height:220px;margin-top:8px"><canvas id="chart"></canvas></div>
+    <div id="extra-warn"></div>
+  </div>
+
+  <!-- TABELA COMPARATIVA -->
+  <div class="section-label">Tabela de referência rápida</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Gateway</th>
+          <th>Pix</th>
+          <th>Crédito à vista</th>
+          <th>Boleto pago</th>
+          <th>Split</th>
+          <th>Mensalidade</th>
+          <th>Recebimento cartão</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>AbacatePay</strong></td><td>R$ 0,80 fixo</td><td>3,5% + R$ 0,60</td><td>R$ 2,50</td><td><span class="pill pill-y">Em breve</span></td><td><span class="pill pill-g">Grátis</span></td><td>D+32 (D+2 por +1,5%)</td></tr>
+        <tr><td><strong>InfinitePay</strong></td><td><span class="pill pill-g">GRÁTIS</span></td><td>a partir de 2,69%</td><td><span class="pill pill-g">Grátis p/ emitir</span></td><td><span class="pill pill-n">Limitado</span></td><td><span class="pill pill-g">Grátis</span></td><td>D+0 ou D+1 incluso</td></tr>
+        <tr><td><strong>Iugu</strong></td><td>a partir de 0,85%</td><td>a partir de 2,49% + R$ 0,70</td><td>R$ 0,70 (+100/mês)</td><td><span class="pill pill-g">Disponível</span></td><td><span class="pill pill-r">R$ 49–149/mês</span></td><td>D+32</td></tr>
+        <tr><td><strong>Efí Bank</strong></td><td>1,19%</td><td>3,49%</td><td>R$ 3,45</td><td><span class="pill pill-g">Grátis</span></td><td><span class="pill pill-g">Grátis</span></td><td>D+31</td></tr>
+        <tr><td><strong>Asaas</strong></td><td>R$ 1,99 (100 grátis/mês)</td><td>R$ 0,49 + 2,99%</td><td>R$ 1,99</td><td><span class="pill pill-g">Disponível</span></td><td><span class="pill pill-g">Grátis</span></td><td>D+32</td></tr>
+        <tr><td><strong>Pagar.me</strong></td><td>1,19%</td><td>4,39–5,59%</td><td>R$ 3,49</td><td><span class="pill pill-g">Disponível</span></td><td><span class="pill pill-g">Grátis</span></td><td>15 dias</td></tr>
+        <tr><td><strong>Stone</strong></td><td>0,75%</td><td>3,11–3,59%</td><td>Por contrato</td><td><span class="pill pill-g">Disponível</span></td><td><span class="pill pill-g">Grátis</span></td><td>30 dias</td></tr>
+        <tr><td><strong>Stripe</strong></td><td>1,19% (por convite)</td><td>3,99% + R$ 0,39</td><td>R$ 3,45</td><td><span class="pill pill-g">Connect</span></td><td><span class="pill pill-g">Grátis</span></td><td>2 dias úteis</td></tr>
+        <tr><td><strong>Mercado Pago</strong></td><td>0% (receber)</td><td>4,49–4,99%</td><td>Por contrato</td><td><span class="pill pill-n">Limitado</span></td><td><span class="pill pill-g">Grátis</span></td><td>Na hora (Pix)</td></tr>
+        <tr><td><strong>PagSeguro</strong></td><td>1,89%</td><td>5,59%</td><td>R$ 2,50</td><td><span class="pill pill-n">Limitado</span></td><td><span class="pill pill-g">Grátis</span></td><td>14–30 dias</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<footer>
+  Fontes verificadas: abacatepay.com/pricing · asaas.com/precos-e-taxas · pagar.me/ofertas · stripe.com/br/pricing · sejaefi.com.br/tarifas · infinitepay.io/taxas — Março/2026<br>
+  Simulação de custo estimado. Taxas podem variar por volume, negociação e plano contratado. Consulte cada gateway para proposta personalizada.
+</footer>
+
+<script>
+const dark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+let chartInstance = null;
+
+function showRec(id, el) {
+  document.querySelectorAll('.sc-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('.rec-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('p-' + id).classList.add('active');
+}
+
+const gateways = [
+  { name: 'AbacatePay', pix: v => 0.80, cred: (v) => v * 0.035 + 0.60, par: (v) => v * 0.035 + 0.60, monthly: 0 },
+  { name: 'InfinitePay', pix: v => 0, cred: v => v * 0.0269, par: v => v * 0.0899, monthly: 0 },
+  { name: 'Iugu', pix: v => v * 0.0085, cred: v => v * 0.0249 + 0.70, par: v => v * 0.0280 + 0.70, monthly: 99 },
+  { name: 'Efí Bank', pix: v => v * 0.0119, cred: v => v * 0.0349, par: v => v * 0.0399, monthly: 0 },
+  { name: 'Asaas', pix: (v, i) => i >= 100 ? 1.99 : 0, cred: v => v * 0.0299 + 0.49, par: v => v * 0.0349 + 0.49, monthly: 0 },
+  { name: 'Pagar.me', pix: v => v * 0.0119, cred: v => v * 0.0559 + 0.99, par: v => v * 0.0559 + 0.99, monthly: 0 },
+  { name: 'Stripe', pix: v => v * 0.0119, cred: v => v * 0.0399 + 0.39, par: v => v * 0.0399 + 0.39, monthly: 0 },
+];
+
+const COLORS = ['#2A2520','#5C8A6A','#6B6760','#A07340','#7A4590','#2A5A8A','#8A2A2A'];
+
+function calcCosts() {
+  const ntx = +document.getElementById('ntx').value;
+  const tick = +document.getElementById('tick').value;
+  const ppix = +document.getElementById('ppix').value / 100;
+  const pcred = +document.getElementById('pcred').value / 100;
+  const ppar = Math.max(0, 1 - ppix - pcred);
+
+  document.getElementById('ntx-out').textContent = ntx;
+  document.getElementById('tick-out').textContent = 'R$ ' + tick;
+  document.getElementById('ppix-out').textContent = Math.round(ppix * 100) + '%';
+  document.getElementById('pcred-out').textContent = Math.round(pcred * 100) + '%';
+
+  const parPct = Math.round(ppar * 100);
+  const hint = document.getElementById('mix-hint');
+  hint.textContent = 'Restante (' + parPct + '%) = parcelado (estimado 6x)';
+  hint.className = 'mix-hint' + (ppar > 0.4 ? ' warn' : '');
+
+  const receita = ntx * tick;
+  document.getElementById('results-meta').textContent =
+    'Receita estimada: R$ ' + Math.round(receita).toLocaleString('pt-BR') + ' | ' + ntx + ' transações';
+
+  const pixTx = Math.round(ntx * ppix);
+  const credTx = Math.round(ntx * pcred);
+  const parTx = ntx - pixTx - credTx;
+
+  const results = gateways.map(g => {
+    let cost = g.monthly;
+    for (let i = 0; i < pixTx; i++) cost += g.pix(tick, i);
+    cost += credTx * g.cred(tick);
+    cost += parTx * g.par(tick);
+    return { name: g.name, cost: Math.round(cost) };
+  }).sort((a, b) => a.cost - b.cost);
+
+  const grid = document.getElementById('results-grid');
+  grid.innerHTML = '';
+  results.forEach((r, i) => {
+    const pct = ((r.cost / receita) * 100).toFixed(1);
+    grid.innerHTML += `<div class="r-card ${i === 0 ? 'winner' : ''}">
+      ${i === 0 ? '<div class="winner-badge">menor custo</div>' : ''}
+      <div class="r-card-name">${r.name}</div>
+      <div class="r-card-cost">R$ ${r.cost.toLocaleString('pt-BR')}</div>
+      <div class="r-card-pct">${pct}% da receita</div>
+    </div>`;
+  });
+
+  const warn = document.getElementById('extra-warn');
+  if (ppar > 0.4) {
+    warn.className = 'extra-warn';
+    warn.innerHTML = '<strong>Atenção:</strong> com ' + parPct + '% parcelado, InfinitePay fica caro (8,99%+ em 12x). Para esse mix, Efí Bank e Iugu são mais competitivos.';
+  } else {
+    warn.className = '';
+    warn.innerHTML = '';
+  }
+
+  const labels = results.map(r => r.name);
+  const data = results.map(r => r.cost);
+
+  if (chartInstance) { chartInstance.destroy(); }
+  chartInstance = new Chart(document.getElementById('chart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: results.map((_, i) => i === 0 ? '#1A1916' : (dark ? '#3A3730' : '#E8E4DC')),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: {
+          label: ctx => 'R$ ' + ctx.parsed.y.toLocaleString('pt-BR') + ' (' + ((ctx.parsed.y / receita) * 100).toFixed(1) + '% da receita)'
+        }
+      }},
+      scales: {
+        x: { ticks: { color: dark ? '#9E9B94' : '#6B6760', font: { size: 11, family: 'DM Sans' }, autoSkip: false, maxRotation: 30 }, grid: { color: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' } },
+        y: { ticks: { color: dark ? '#9E9B94' : '#6B6760', font: { size: 11, family: 'DM Mono' }, callback: v => 'R$ ' + v.toLocaleString('pt-BR') }, grid: { color: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' } }
+      }
+    }
+  });
+}
+
+['ntx','tick','ppix','pcred'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calcCosts);
+});
+
+calcCosts();
+</script>
+</body>
+</html>
